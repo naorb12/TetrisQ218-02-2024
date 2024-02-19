@@ -33,6 +33,8 @@ public:
 	int getPieceType() const { return pieceType; }
 	int getLeft() const;
 	int getMin() const;
+	int getMax() const;
+
 
 	//move piece
 	void moveRight(const Board& board);

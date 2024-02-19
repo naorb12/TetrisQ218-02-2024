@@ -79,7 +79,8 @@ Piece::Piece(const Piece& other) : pieceType(other.pieceType)
 {
 	for (int i = 0; i < GameConfig::PIECE_SIZE; ++i) 
 	{
-		this->tetrimino[i] = other.tetrimino[i];
+		this->tetrimino[i].setX(other.tetrimino[i].getX());
+		this->tetrimino[i].setY(other.tetrimino[i].getY());
 	}
 }
 
@@ -94,7 +95,7 @@ int Piece::getLeft() const
 	return left;
 }
 
-int Piece::getMin() const
+int Piece::getMin() const // highest Y = lowest point on board
 {
 	int min = tetrimino[0].getY();
 	for (int i = 0; i < GameConfig::PIECE_SIZE; i++)
@@ -105,6 +106,17 @@ int Piece::getMin() const
 	return min;
 }
 
+int Piece::getMax() const // lowest Y = highest point on board
+{
+	int max = tetrimino[0].getY();
+	for (int i = 0; i < GameConfig::PIECE_SIZE; i++)
+	{
+		if (tetrimino[i].getY() <= max)
+			max = tetrimino[i].getY();
+	}
+	return max;
+}
+
 int Piece::setPieceType() {
 	int number = rand() % 100;
 	if (number < 5)
@@ -112,6 +124,7 @@ int Piece::setPieceType() {
 	else
 		return (number) % GameConfig::NUMBER_OF_PIECE_TYPE;
 }
+
 // This function cheks and moves a piece right on the board
 void Piece::moveRight(const Board& board)
 {

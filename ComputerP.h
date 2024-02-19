@@ -9,7 +9,7 @@ constexpr int NUM_OF_POINTS = 4;
 
 enum Level{ NOVICE, GOOD, BEST};
 enum Moves{ LEFT, RIGHT, ROTATE_CW, ROTATE_CCW, DROP, NOTHING};
-enum Score{ROW_CLEARED = 10, HOLE=3, TOPLEVEL_UP = 3};
+enum Score{ROW_CLEARED = 10, HOLE=9, TOPLEVEL_UP = 2, BOMB_PC = 3};
 
 
 class ComputerP : public Player {
@@ -29,10 +29,14 @@ class ComputerP : public Player {
 	void simulateMove(const Piece& tempPiece,  DESIRED_MOVES* desiredArr)  ;
 	bool canPlacePiece(const Piece& tempPiece, int col, int row) const;
 	int getScore(int col, int row) ;
-	int countHoles(const Board& tempBoard) const;
+	int bombComputer(const Piece& p,  Board& tempBoard);
+	int countHoles( const Board& tempBoard, const Piece& p) const;
 	int countTopLevelUP(const Board& tempBoard) const;
 	int decideMove(const Piece& tempPiece, int desiredX)const ;
 	int moveChosen(const DESIRED_MOVES* desiredArr, const std::string str) const;
+
+	int getMax(const int a, const int b) const { return (a > b) ? a : b; }
+	int getMin(const int a, const int b) const { return (a < b) ? a : b; }
 
 	char randomMove( const std::string str)const;
 

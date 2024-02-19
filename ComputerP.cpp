@@ -107,12 +107,17 @@ int ComputerP::getScore( int col, int row)
 		b.setBoardPoint(p.tetrimino[i]);
 	}
 
+	if (p.getPieceType() == B)
+	{
+		return bombComputer(p, b);
+	}
+
 	for (int i = 0; i < GameConfig::PIECE_SIZE; i++)
 	{
-		int row = p.tetrimino[i].getY();
-		if (b.isRowFull(row))
+		int rowClear = p.tetrimino[i].getY();
+		if (b.isRowFull(rowClear))
 		{
-			for (int j = row; j > 0; j--)
+			for (int j = rowClear; j > 0; j--)
 			{
 				for (int col = 0; col < GameConfig::GAME_WIDTH; col++)
 				{
@@ -131,44 +136,45 @@ int ComputerP::getScore( int col, int row)
 		}
 	}
 	
-	
-	score = score - (countHoles(b) * HOLE)- (countTopLevelUP(b) * TOPLEVEL_UP);
+	score = score - (countHoles(b, p) * HOLE) - (countTopLevelUP(b) * TOPLEVEL_UP) + p.getMax();
 
 	return score;
 }
 
-int ComputerP::countHoles(const Board& tempBoard) const
+int ComputerP::countHoles( const Board& tempBoard, const Piece& p) const
 {
-	int holeCount = 0;
-	for (int x = 0; x < GameConfig::GAME_WIDTH; ++x) 
-	{
-		bool foundBlock = false;
-		for (int y = 0; y < GameConfig::GAME_HEIGHT; ++y)
-		{
-			if (tempBoard.getBoardPoint(y,x) == GameConfig::FILLED_CELL) 
-			{
-				foundBlock = true;
+	int newHoleCount = 0;
+	for (int x = 0; x < GameConfig::GAME_WIDTH; ++x) {
+		bool foundBlockBefore = false;
+		bool foundBlockAfter = false;
+		for (int y = 0; y < GameConfig::GAME_HEIGHT; ++y) {
+			if (board.getBoardPoint(y, x) == GameConfig::FILLED_CELL) {
+				foundBlockBefore = true;
 			}
-			else if (foundBlock && tempBoard.getBoardPoint(y, x) == GameConfig::EMPTY_CELL)
-			{
-				// Found a hole
-				holeCount++;
+			if (tempBoard.getBoardPoint(y, x) == GameConfig::FILLED_CELL) {
+				foundBlockAfter = true;
+			}
+
+			// Check for a new hole: a transition from no block above to block above
+			if (!foundBlockBefore && foundBlockAfter && tempBoard.getBoardPoint(y, x) == GameConfig::EMPTY_CELL) {
+				newHoleCount++;
+				foundBlockBefore = true; // Update to prevent counting this space as a new hole again
 			}
 		}
 	}
-	return holeCount;
+	return newHoleCount;
 }
 
 int ComputerP::countTopLevelUP(const Board& tempBoard) const
 {
-	int count = 0;
+	int max = 0;
 
 	for (int i = 0; i < GameConfig::GAME_WIDTH; i++)
 	{
-		if (tempBoard.getTopLevelPoint(i) < board.getTopLevelPoint(i))
-			count++;
+		if (board.getTopLevelPoint(i) - tempBoard.getTopLevelPoint(i) > max)
+			max = board.getTopLevelPoint(i) - tempBoard.getTopLevelPoint(i);
 	}
-	return count;
+	return max;
 }
 
 int ComputerP::decideMove(const Piece& tempPiece, int desiredX) const
@@ -201,6 +207,9 @@ bool ComputerP::canPlacePiece(const Piece& tempPiece, int col, int row) const
 	int sign = (xDifference > 0) - (xDifference < 0);
 	int min = p.getMin();
 	int yDifference = row - min - 1;
+
+	if (yDifference < abs(xDifference))
+		return false;
 
 	bool check = true;
 	for (int j = 0; j < abs(xDifference); j++)
@@ -235,7 +244,7 @@ bool ComputerP::canPlacePiece(const Piece& tempPiece, int col, int row) const
 int ComputerP::moveChosen(const DESIRED_MOVES* desiredArr, const std::string str) const
 {
 	int numRotate = 0;
-	desiredMoves max = desiredArr[0];
+	desiredMoves max;
 
 
 	for (int i = 0; i < NUM_OF_ROTATIONS; i++)
@@ -257,9 +266,45 @@ int ComputerP::moveChosen(const DESIRED_MOVES* desiredArr, const std::string str
 	else
 		return max.move;
 
-
 }
 
+int ComputerP::bombComputer(const Piece & p,  Board & tempBoard)
+{
+	int countBefore = 0;
+	int countAfter = 0;
+	for (int i = 0; i < GameConfig::GAME_WIDTH; i++)
+	{
+		for (int j = 0; j < GameConfig::GAME_HEIGHT; j++)
+		{
+			if (tempBoard.getBoardPoint(j, i) == GameConfig::FILLED_CELL)
+				countBefore++;
+		}
+	}
+
+	int startX = getMax(0, p.tetrimino[0].getX() - BOMB_RADIUS);
+	int startY = getMax(0, p.tetrimino[0].getY() - BOMB_RADIUS);
+	int endX = getMin(GameConfig::GAME_WIDTH - 1, p.tetrimino[0].getX() + BOMB_RADIUS);
+	int endY = getMin(GameConfig::GAME_HEIGHT - 1, p.tetrimino[0].getY() + BOMB_RADIUS);
+
+	for (int y = startY; y <= endY; ++y)
+	{
+		for (int x = startX; x <= endX; ++x)
+		{
+			tempBoard.resetBoardPoint(Point(x,y));
+		}
+	}
+
+	for (int i = 0; i < GameConfig::GAME_WIDTH; i++)
+	{
+		for (int j = 0; j < GameConfig::GAME_HEIGHT; j++)
+		{
+			if (tempBoard.getBoardPoint(j, i) == GameConfig::FILLED_CELL)
+				countAfter++;
+		}
+	}
+
+	return (countAfter - countBefore) * BOMB_PC;
+}
 
 char ComputerP::randomMove(const std::string str)const
 {
@@ -293,8 +338,6 @@ char ComputerP::translateMove(const int move, const std::string str) const
 			ch = DROP1;
 			break;
 		case NOTHING:
-			if(level >NOVICE)
-				ch = DROP1;
 			break;
 		default:
 			break;
@@ -319,8 +362,6 @@ char ComputerP::translateMove(const int move, const std::string str) const
 			ch = DROP2;
 			break;
 		case NOTHING:
-			if(level > NOVICE)
-				ch = DROP2;
 			break;
 		default:
 			break;
