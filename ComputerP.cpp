@@ -79,8 +79,7 @@ void ComputerP::simulateMove(const Piece& tempPiece,  DESIRED_MOVES* desiredArr)
 	{
 		if (canPlacePiece(tempPiece, i, board.getTopLevelPoint(i)))
 		{
-			Board tempBoard(board); // copy ctor
-			int score = getScore(tempPiece, board, i, board.getTopLevelPoint(i));
+			int score = getScore(i, board.getTopLevelPoint(i));
 			if (score > desiredArr->score)
 			{
 				desiredArr->score = score;
@@ -90,27 +89,50 @@ void ComputerP::simulateMove(const Piece& tempPiece,  DESIRED_MOVES* desiredArr)
 	}
 }
 
-int ComputerP::getScore(const Piece& tempPiece,  Board& tempBoard, int col, int row) 
+int ComputerP::getScore( int col, int row) 
 {
-	Piece p(tempPiece); //copy ctor
+	Piece p(this->currPiece);
+	Board b(board);
+
+	int left = p.getLeft();
+	int xDifference = (col - left);
+	int min = p.getMin();
+	int yDifference = row - min - 1;
+
 	int score = 0;
 	for (int i = 0; i < GameConfig::PIECE_SIZE; ++i)
 	{
-		p.tetrimino[i].setX(col + tempPiece.tetrimino[i].getX()); 
-		p.tetrimino[i].setY(row + tempPiece.tetrimino[i].getY());
-		tempBoard.setBoardPoint(p.tetrimino[i]);
+		p.tetrimino[i].addToX(xDifference);
+		p.tetrimino[i].addToY(yDifference);
+		b.setBoardPoint(p.tetrimino[i]);
 	}
 
 	for (int i = 0; i < GameConfig::PIECE_SIZE; i++)
 	{
 		int row = p.tetrimino[i].getY();
-		if (tempBoard.isRowFull(row))
+		if (b.isRowFull(row))
 		{
+			for (int j = row; j > 0; j--)
+			{
+				for (int col = 0; col < GameConfig::GAME_WIDTH; col++)
+				{
+					if (b.getBoardPoint(j - 1, col) == GameConfig::FILLED_CELL)
+						b.setBoardPoint(Point(col, j));
+					else
+						b.resetBoardPoint(Point(col, j));
+				}
+			}
+
+			for (int col = 0; col < GameConfig::GAME_WIDTH; col++)
+			{
+				b.resetBoardPoint(Point(col, 0));
+			}
 			score += ROW_CLEARED;
 		}
 	}
 	
-	score = score - (countHoles(tempBoard) * HOLE);
+	
+	score = score - (countHoles(b) * HOLE)- (countTopLevelUP(b) * TOPLEVEL_UP);
 
 	return score;
 }
@@ -137,6 +159,18 @@ int ComputerP::countHoles(const Board& tempBoard) const
 	return holeCount;
 }
 
+int ComputerP::countTopLevelUP(const Board& tempBoard) const
+{
+	int count = 0;
+
+	for (int i = 0; i < GameConfig::GAME_WIDTH; i++)
+	{
+		if (tempBoard.getTopLevelPoint(i) < board.getTopLevelPoint(i))
+			count++;
+	}
+	return count;
+}
+
 int ComputerP::decideMove(const Piece& tempPiece, int desiredX) const
 {
 	int left = tempPiece.getLeft();
@@ -145,7 +179,7 @@ int ComputerP::decideMove(const Piece& tempPiece, int desiredX) const
 
 	if (difference > 0)
 	{
-		return RIGHT; // Move right
+		return RIGHT; 
 	}
 	else if (difference < 0) 
 	{
@@ -159,32 +193,50 @@ int ComputerP::decideMove(const Piece& tempPiece, int desiredX) const
 
 bool ComputerP::canPlacePiece(const Piece& tempPiece, int col, int row) const
 {
-	int left = tempPiece.getLeft();
-	int xDifference = abs(col - left);
-	int min = tempPiece.getMin();
+	Piece p(tempPiece);
+	Board b(board);
+
+	int left = p.getLeft();
+	int xDifference = (col - left);
+	int sign = (xDifference > 0) - (xDifference < 0);
+	int min = p.getMin();
 	int yDifference = row - min - 1;
 
-	for (int i = 0; i < GameConfig::PIECE_SIZE; ++i) {
-		int x = xDifference + tempPiece.tetrimino[i].getX(); // Horizontal position remains the same
-		int y = yDifference + tempPiece.tetrimino[i].getY(); // Vertical position needs careful boundary checking
-
-		// Corrected boundary check for the bottom of the board
-		if (x < 0 || x >= GameConfig::GAME_WIDTH || y < 0 || y >= GameConfig::GAME_HEIGHT) {
-			return false; // The block is outside the board's boundaries
-		}
-
-		// Check if the block's position is already occupied on the board
-		if (board.getBoardPoint(y,x) != 0) {
-			return false; // The block overlaps with an existing block
+	bool check = true;
+	for (int j = 0; j < abs(xDifference); j++)
+	{
+		for (int i = 0; i < GameConfig::PIECE_SIZE; i++)
+		{
+			if (p.tetrimino[i].getX() == GameConfig::GAME_WIDTH - 1 || p.tetrimino[i].getX() == 0 || board.getBoardPoint(p.tetrimino[i].getY() + 1, p.tetrimino[i].getX() + 1) == GameConfig::FILLED_CELL)
+				return false;
+			else
+				p.tetrimino[i].addToX(sign);
 		}
 	}
+
+	for (int i = 0; i < yDifference; i++)
+	{
+		for (int i = 0; i < GameConfig::PIECE_SIZE; i++)
+		{
+			if (p.tetrimino[i].getY() == GameConfig::GAME_HEIGHT - 1)
+				return false;
+
+			if (b.getBoardPoint(p.tetrimino[i].getY() + 1, p.tetrimino[i].getX()) == GameConfig::FILLED_CELL)
+				return false;
+			else
+				p.tetrimino[i].addToY(1);
+		}
+	}
+
 	return true;
 }
+
 
 int ComputerP::moveChosen(const DESIRED_MOVES* desiredArr, const std::string str) const
 {
 	int numRotate = 0;
 	desiredMoves max = desiredArr[0];
+
 
 	for (int i = 0; i < NUM_OF_ROTATIONS; i++)
 	{
@@ -241,6 +293,8 @@ char ComputerP::translateMove(const int move, const std::string str) const
 			ch = DROP1;
 			break;
 		case NOTHING:
+			if(level >NOVICE)
+				ch = DROP1;
 			break;
 		default:
 			break;
@@ -265,6 +319,8 @@ char ComputerP::translateMove(const int move, const std::string str) const
 			ch = DROP2;
 			break;
 		case NOTHING:
+			if(level > NOVICE)
+				ch = DROP2;
 			break;
 		default:
 			break;

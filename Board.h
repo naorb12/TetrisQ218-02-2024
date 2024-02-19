@@ -8,7 +8,7 @@ static constexpr int BOMB_RADIUS = 4;
 
 class Board 
 {
-	char board[GameConfig::GAME_HEIGHT][GameConfig::GAME_WIDTH]; 
+	char board[GameConfig::GAME_HEIGHT][GameConfig::GAME_WIDTH] ;
 	int topLevel[GameConfig::GAME_WIDTH];
 
 	void shiftRowsDown(const int startRow);
@@ -23,7 +23,8 @@ public:
 	Board() {}
 	Board(const Board& other);
 	char getBoardPoint(const int row, const int col) const { return board[row][col]; }
-	void setBoardPoint(Point p) { board[p.getY()][p.getX()] = GameConfig::FILLED_CELL; } // used in ComputerP
+	void setBoardPoint(Point p); // used in ComputerP
+	void resetBoardPoint(Point p); // used in ComputerP
 	int getTopLevelPoint(const int i) const { return topLevel[i]; }
 
 	void initBoard();

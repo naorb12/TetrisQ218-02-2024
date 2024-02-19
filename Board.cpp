@@ -185,6 +185,18 @@ void Board::topLevelAfterBomb()
     }
 }
 
+void Board::setBoardPoint(Point p) { 
+    board[p.getY()][p.getX()] = GameConfig::FILLED_CELL; 
+    if (topLevel[p.getX()] > p.getY())
+        topLevel[p.getX()] = p.getY();
+} // used in ComputerP
+
+void Board::resetBoardPoint(Point p) {
+    board[p.getY()][p.getX()] = GameConfig::FILLED_CELL;
+    if (topLevel[p.getX()] == p.getY())
+        topLevel[p.getX()]++;
+} // used in ComputerP
+
 
 
 

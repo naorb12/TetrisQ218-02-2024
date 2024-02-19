@@ -99,7 +99,7 @@ int Piece::getMin() const
 	int min = tetrimino[0].getY();
 	for (int i = 0; i < GameConfig::PIECE_SIZE; i++)
 	{
-		if (tetrimino[i].getY() <= min)
+		if (tetrimino[i].getY() >= min)
 			min = tetrimino[i].getY();
 	}
 	return min;
